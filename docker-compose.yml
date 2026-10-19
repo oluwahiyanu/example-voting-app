@@ -4,14 +4,12 @@
 
 services:
   vote:
-    build: 
-      context: ./vote
-      target: dev
+    build: ./vote
     depends_on:
       redis:
         condition: service_healthy
     healthcheck: 
-      test: ["CMD", "curl", "-f", "http://localhost"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -19,7 +17,7 @@ services:
     volumes:
      - ./vote:/usr/local/app
     ports:
-      - "8080:80"
+      - "8080:8080"
     networks:
       - front-tier
       - back-tier
@@ -34,7 +32,7 @@ services:
     volumes:
       - ./result:/usr/local/app
     ports:
-      - "8081:80"
+      - "8081:8080"
       - "127.0.0.1:9229:9229"
     networks:
       - front-tier
