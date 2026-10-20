@@ -113,13 +113,15 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-north-1
-      - uses: azure/setup-helm@v4
       - name: Connect to the cluster
         run: aws eks update-kubeconfig --region eu-north-1 --name capstone-cluster
-      - name: Deploy with Helm
+      - name: Deploy Kubernetes manifests
         run: |
-          helm upgrade --install voting ./helm/voting-app \
-            --set apps.vote.tag=${{ github.sha }} \
-            --set apps.result.tag=${{ github.sha }} \
-            --set apps.worker.tag=${{ github.sha }} \
-            --wait --timeout 180s
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          kubectl apply -f ./k8s-specifications/
+          kubectl set image deployment/vote vote=ghcr.io/$OWNER/vote:${{ github.sha }}
+          kubectl set image deployment/result result=ghcr.io/$OWNER/result:${{ github.sha }}
+          kubectl set image deployment/worker worker=ghcr.io/$OWNER/worker:${{ github.sha }}
+          kubectl rollout status deployment/vote --timeout=180s
+          kubectl rollout status deployment/result --timeout=180s
+          kubectl rollout status deployment/worker --timeout=180s
