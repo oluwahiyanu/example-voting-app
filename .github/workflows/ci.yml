@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check vote app compiles
+        run: python3 -m py_compile vote/app.py
+      - name: Check result app syntax
+        run: node --check result/server.js
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [vote, result, worker]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lowercase the owner name
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
+      - name: Build image (not pushed yet)
+        run: docker build -t ghcr.io/$OWNER/${{ matrix.service }}:${{ github.sha }} ./${{ matrix.service }}
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/${{ env.OWNER }}/${{ matrix.service }}:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        run: docker push ghcr.io/$OWNER/${{ matrix.service }}:${{ github.sha }}
