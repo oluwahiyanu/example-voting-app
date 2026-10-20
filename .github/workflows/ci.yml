@@ -9,7 +9,7 @@ permissions:
   packages: write
 
 jobs:
-  test:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,29 +18,11 @@ jobs:
       - name: Check result app syntax
         run: node --check result/server.js
 
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 1
-      matrix:
-        service: [vote, result, worker]
-    steps:
-      - uses: actions/checkout@v4
+      - name: Check worker builds
+        run: docker run --rm -v "$GITHUB_WORKSPACE/worker:/source" -w /source mcr.microsoft.com/dotnet/sdk:8.0 dotnet build Worker.csproj --configuration Release
 
       - name: Lowercase the owner name
-        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
-
-      - name: Build image (not pushed yet)
-        run: docker build -t ghcr.io/$OWNER/${{ matrix.service }}:${{ github.sha }} ./${{ matrix.service }}
-
-      - name: Trivy scan
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
-        with:
-          image-ref: ghcr.io/${{ env.OWNER }}/${{ matrix.service }}:${{ github.sha }}
-          severity: CRITICAL
-          exit-code: '1'
-          ignore-unfixed: true
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -49,5 +31,44 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push image
-        run: docker push ghcr.io/$OWNER/${{ matrix.service }}:${{ github.sha }}
+      - name: Build vote image
+        run: docker build -t ghcr.io/$OWNER/vote:${{ github.sha }} ./vote
+
+      - name: Scan vote image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: ghcr.io/${{ env.OWNER }}/vote:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Push vote image
+        run: docker push ghcr.io/$OWNER/vote:${{ github.sha }}
+
+      - name: Build result image
+        run: docker build -t ghcr.io/$OWNER/result:${{ github.sha }} ./result
+
+      - name: Scan result image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: ghcr.io/${{ env.OWNER }}/result:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Push result image
+        run: docker push ghcr.io/$OWNER/result:${{ github.sha }}
+
+      - name: Build worker image
+        run: docker build -t ghcr.io/$OWNER/worker:${{ github.sha }} ./worker
+
+      - name: Scan worker image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: ghcr.io/${{ env.OWNER }}/worker:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Push worker image
+        run: docker push ghcr.io/$OWNER/worker:${{ github.sha }}
