@@ -112,10 +112,10 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: eu-north-1
       - uses: azure/setup-helm@v4
       - name: Connect to the cluster
-        run: aws eks update-kubeconfig --region us-east-1 --name capstone-cluster
+        run: aws eks update-kubeconfig --region eu-north-1 --name capstone-cluster
       - name: Deploy with Helm
         run: |
           helm upgrade --install voting ./helm/voting-app \
