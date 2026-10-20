@@ -23,6 +23,10 @@ RUN dotnet publish -c release -o /app -a $TARGETARCH --self-contained false --no
 
 # app image
 FROM mcr.microsoft.com/dotnet/runtime:8.0
+RUN apt-get update && \
+    apt-get -y upgrade && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY --from=build /app .
 USER app

@@ -1,5 +1,9 @@
 FROM python:3.11.9-slim
 
+RUN apt-get update && \
+    apt-get -y upgrade && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /usr/local/app
 
 COPY requirements.txt ./

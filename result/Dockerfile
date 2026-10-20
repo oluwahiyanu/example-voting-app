@@ -3,6 +3,7 @@ FROM node:20.15-slim
 # add curl for healthcheck
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl tini && \
+    apt-get -y upgrade && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/local/app
