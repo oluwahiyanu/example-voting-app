@@ -22,6 +22,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       matrix:
         service: [vote, result, worker]
     steps:
