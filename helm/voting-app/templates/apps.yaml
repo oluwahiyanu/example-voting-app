@@ -1,0 +1,42 @@
+{{- range $name, $app := .Values.apps }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  replicas: {{ $app.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: "{{ $app.image }}:{{ $app.tag }}"
+          {{- if $app.port }}
+          ports:
+            - containerPort: {{ $app.port }}
+          {{- end }}
+          {{- with $app.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- if $app.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+spec:
+  type: {{ $app.serviceType | default "ClusterIP" }}
+  selector:
+    app: {{ $name }}
+  ports:
+    - port: {{ $app.servicePort | default $app.port }}
+      targetPort: {{ $app.port }}
+{{- end }}
+{{- end }}
