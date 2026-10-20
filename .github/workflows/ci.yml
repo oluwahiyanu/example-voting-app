@@ -9,7 +9,7 @@ permissions:
   packages: write
 
 jobs:
-  ci:
+  vote:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,9 +17,6 @@ jobs:
         run: python3 -m py_compile vote/app.py
       - name: Check result app syntax
         run: node --check result/server.js
-
-      - name: Check worker builds
-        run: docker run --rm -v "$GITHUB_WORKSPACE/worker:/source" -w /source mcr.microsoft.com/dotnet/sdk:8.0 dotnet build Worker.csproj --configuration Release
 
       - name: Lowercase the owner name
         run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
@@ -45,6 +42,21 @@ jobs:
       - name: Push vote image
         run: docker push ghcr.io/$OWNER/vote:${{ github.sha }}
 
+  result:
+    needs: vote
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lowercase the owner name
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build result image
         run: docker build -t ghcr.io/$OWNER/result:${{ github.sha }} ./result
 
@@ -58,6 +70,24 @@ jobs:
 
       - name: Push result image
         run: docker push ghcr.io/$OWNER/result:${{ github.sha }}
+
+  worker:
+    needs: result
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check worker builds
+        run: docker run --rm -v "$GITHUB_WORKSPACE/worker:/source" -w /source mcr.microsoft.com/dotnet/sdk:8.0 dotnet build Worker.csproj --configuration Release
+
+      - name: Lowercase the owner name
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build worker image
         run: docker build -t ghcr.io/$OWNER/worker:${{ github.sha }} ./worker
