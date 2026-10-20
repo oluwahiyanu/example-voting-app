@@ -103,12 +103,10 @@ jobs:
       - name: Push worker image
         run: docker push ghcr.io/$OWNER/worker:${{ github.sha }}
 
-#adding a new job to deploy the application to EKS using Helm
-   
- deploy:
-     needs: build
-     runs-on: ubuntu-latest
-     steps:
+  deploy:
+    needs: [vote, result, worker]
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
         with:
