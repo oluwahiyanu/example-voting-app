@@ -131,6 +131,12 @@ pushes to `main`. It:
 4. Pushes the images to GHCR using the commit SHA as the tag.
 5. Connects to EKS and upgrades the `voting` Helm release.
 
+The single-replica Vote, Result, and Worker Deployments use a zero-surge
+rolling strategy so updates do not require an extra pod slot on the cluster.
+This can briefly interrupt an individual service while its replacement starts.
+The `robot-shop` directory is tracked as a Git submodule; its source URL is
+declared in `.gitmodules` so GitHub Actions checkout cleanup can resolve it.
+
 Configure these repository secrets under **Settings → Secrets and variables →
 Actions**:
 

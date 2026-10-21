@@ -4,6 +4,11 @@ apps:
     tag: latest
     port: 8080
     replicas: 1
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
     serviceType: LoadBalancer
     servicePort: 80
   result:
@@ -11,12 +16,22 @@ apps:
     tag: latest
     port: 8080
     replicas: 1
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
     serviceType: LoadBalancer
     servicePort: 80
   worker:
     image: ghcr.io/oluwahiyanu/worker
     tag: latest
     replicas: 1
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
   redis:
     image: redis
     tag: alpine
