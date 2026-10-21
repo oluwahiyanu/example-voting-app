@@ -3,7 +3,7 @@ apps:
     image: ghcr.io/oluwahiyanu/vote
     tag: latest
     port: 8080
-    replicas: 2
+    replicas: 1
     serviceType: LoadBalancer
     servicePort: 80
   result:
@@ -19,14 +19,20 @@ apps:
     replicas: 1
   redis:
     image: redis
-    tag: 7.2-alpine
+    tag: alpine
     port: 6379
     replicas: 1
   db:
     image: postgres
-    tag: 16-alpine
+    tag: 15-alpine
     port: 5432
     replicas: 1
+    containerName: postgres
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
     env:
       - name: POSTGRES_USER
         value: postgres

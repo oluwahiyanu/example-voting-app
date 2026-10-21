@@ -1,0 +1,308 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring-blackbox-exporter
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: blackbox-exporter
+    spec:
+      containers:
+        - name: blackbox-exporter
+          image: prom/blackbox-exporter:v0.27.0
+          args:
+            - --config.file=/etc/blackbox_exporter/config.yml
+          ports:
+            - name: http
+              containerPort: 9115
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-blackbox-exporter
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: blackbox-exporter
+  ports:
+    - name: http
+      port: 9115
+      targetPort: http
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: robot-shop-app-metrics
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - robot-shop
+  selector:
+    matchExpressions:
+      - key: service
+        operator: In
+        values:
+          - cart
+          - payment
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-web
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-web
+  interval: 30s
+  scrapeTimeout: 10s
+  module: http_2xx
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://web.robot-shop.svc.cluster.local:8080/
+      labels:
+        namespace: robot-shop
+        service: web
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-cart
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-cart
+  interval: 30s
+  scrapeTimeout: 10s
+  module: http_2xx
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://cart.robot-shop.svc.cluster.local:8080/health
+      labels:
+        namespace: robot-shop
+        service: cart
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-catalogue
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-catalogue
+  interval: 30s
+  scrapeTimeout: 10s
+  module: http_2xx
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://catalogue.robot-shop.svc.cluster.local:8080/health
+      labels:
+        namespace: robot-shop
+        service: catalogue
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-payment
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-payment
+  interval: 30s
+  scrapeTimeout: 10s
+  module: http_2xx
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://payment.robot-shop.svc.cluster.local:8080/health
+      labels:
+        namespace: robot-shop
+        service: payment
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-user
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-user
+  interval: 30s
+  scrapeTimeout: 10s
+  module: http_2xx
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://user.robot-shop.svc.cluster.local:8080/health
+      labels:
+        namespace: robot-shop
+        service: user
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-shipping
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-shipping
+  interval: 30s
+  scrapeTimeout: 10s
+  module: http_2xx
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://shipping.robot-shop.svc.cluster.local:8080/health
+      labels:
+        namespace: robot-shop
+        service: shipping
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-mongodb
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-mongodb
+  interval: 30s
+  scrapeTimeout: 10s
+  module: tcp_connect
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - mongodb.robot-shop.svc.cluster.local:27017
+      labels:
+        namespace: robot-shop
+        service: mongodb
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-mysql
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-mysql
+  interval: 30s
+  scrapeTimeout: 10s
+  module: tcp_connect
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - mysql.robot-shop.svc.cluster.local:3306
+      labels:
+        namespace: robot-shop
+        service: mysql
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-rabbitmq
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-rabbitmq
+  interval: 30s
+  scrapeTimeout: 10s
+  module: tcp_connect
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - rabbitmq.robot-shop.svc.cluster.local:5672
+      labels:
+        namespace: robot-shop
+        service: rabbitmq
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: robot-shop-redis
+  labels:
+    release: monitoring
+spec:
+  jobName: robot-shop-redis
+  interval: 30s
+  scrapeTimeout: 10s
+  module: tcp_connect
+  prober:
+    url: monitoring-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - redis.robot-shop.svc.cluster.local:6379
+      labels:
+        namespace: robot-shop
+        service: redis

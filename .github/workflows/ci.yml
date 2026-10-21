@@ -115,13 +115,16 @@ jobs:
           aws-region: eu-north-1
       - name: Connect to the cluster
         run: aws eks update-kubeconfig --region eu-north-1 --name capstone-cluster
-      - name: Deploy Kubernetes manifests
+      - name: Deploy voting app with Helm
         run: |
-          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
-          kubectl apply -f ./k8s-specifications/
-          kubectl set image deployment/vote vote=ghcr.io/$OWNER/vote:${{ github.sha }}
-          kubectl set image deployment/result result=ghcr.io/$OWNER/result:${{ github.sha }}
-          kubectl set image deployment/worker worker=ghcr.io/$OWNER/worker:${{ github.sha }}
+          helm upgrade --install voting ./helm/voting-app \
+            --namespace default \
+            --set apps.vote.tag=${{ github.sha }} \
+            --set apps.result.tag=${{ github.sha }} \
+            --set apps.worker.tag=${{ github.sha }} \
+            --force-conflicts
+          kubectl rollout status deployment/db --timeout=180s
+          kubectl rollout status deployment/redis --timeout=180s
           kubectl rollout status deployment/vote --timeout=180s
           kubectl rollout status deployment/result --timeout=180s
           kubectl rollout status deployment/worker --timeout=180s
